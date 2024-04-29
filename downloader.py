@@ -37,11 +37,11 @@ async def download_file(url: str, filename: str) -> str:
         return None
 
 
-async def download_video(url: str) -> str:
+async def download_video(url: str, quality: str = 'best') -> str:
     if url.startswith('https://www.youtube.com/') or url.startswith('https://youtu.be/'):
         try:
             ydl_opts = {
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+                'format': f'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4/bestvideo[height<={quality}]+bestaudio/best[height<={quality}]',
                 'outtmpl': 'downloaded_video.mp4',
             }
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
@@ -68,9 +68,17 @@ async def start(message: types.Message):
 
 @dp.message_handler()
 async def process_video(message: types.Message):
-    url = message.text.strip()
+    text = message.text.strip()
 
-    file_path = await download_video(url)
+    if text.endswith('.mkv') or text.endswith('.mp4'):
+        file_path = await download_file(text, 'downloaded_video.mkv')
+    else:
+        parts = text.split()
+        url = parts[0]
+        quality = 'best'  # Default quality
+        if len(parts) > 1:
+            quality = parts[1]
+        file_path = await download_video(url, quality)
 
     if file_path:
         await message.reply_document(InputFile(file_path))
