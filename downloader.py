@@ -6,19 +6,23 @@ import requests
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.types import InputFile
+import logging
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot)
 
 
 async def download_video(url: str) -> str:
+    logging.info(f"Downloading video from: {url}")
     response = requests.get(url)
     if response.status_code == 200:
         filename = 'downloaded_video.mp4'
         with open(filename, 'wb') as f:
             f.write(response.content)
+        logging.info("Video downloaded successfully.")
         return filename
     else:
+        logging.error(f"Failed to download video. Status code: {response.status_code}")
         return None
 
 
@@ -42,6 +46,7 @@ async def process_video(message: types.Message):
 
 
 if __name__ == '__main__':
+    logging.info("Starting bot...")
     loop = asyncio.get_event_loop()
     loop.create_task(dp.start_polling())
     loop.run_forever()
