@@ -7,7 +7,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.types import InputFile
 import aiohttp
 import youtube_dl
-from youtube_dl.utils import ExtractorError
+from youtube_dl.utils import DownloadError
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot)
@@ -21,7 +21,7 @@ async def download_video(url: str) -> str:
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-    except youtube_dl.DownloadError:
+    except DownloadError:
         return None
     return 'downloaded_video.mp4'
 
