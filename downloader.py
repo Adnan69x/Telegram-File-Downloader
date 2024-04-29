@@ -2,6 +2,7 @@ import logging
 import os
 import config
 import aiohttp
+import re
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
@@ -15,12 +16,11 @@ bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot)
 
 
-async def download_video(url: str) -> str:
+async def download_file(url: str, filename: str) -> str:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status == 200:
-                    filename = 'downloaded_video.mkv'  # Adjust the filename as needed
                     with open(filename, 'wb') as f:
                         while True:
                             chunk = await response.content.read(1024)
@@ -29,11 +29,25 @@ async def download_video(url: str) -> str:
                             f.write(chunk)
                     return filename
                 else:
-                    logger.error(f"Failed to download video. Status code: {response.status}")
+                    logger.error(f"Failed to download file. Status code: {response.status}")
                     return None
     except Exception as e:
-        logger.exception("Error occurred while downloading video:")
+        logger.exception("Error occurred while downloading file:")
         return None
+
+
+async def download_video(url: str) -> str:
+    if "youtube.com" in url or "youtu.be" in url:
+        # Handle YouTube video download
+        return await download_youtube_video(url)
+    else:
+        # Handle direct file download link
+        return await download_file(url, 'downloaded_video.mkv')
+
+
+async def download_youtube_video(url: str) -> str:
+    # Add code to download YouTube videos here
+    return None
 
 
 @dp.message_handler(commands=['start'])
@@ -43,16 +57,19 @@ async def start(message: types.Message):
 
 @dp.message_handler()
 async def process_video(message: types.Message):
-    url = message.text
+    url = message.text.strip()
+
+    # Check if the provided link is a direct file download link
     if url.endswith('.mkv') or url.endswith('.mp4'):
-        file_path = await download_video(url)
-        if file_path:
-            await message.reply_document(InputFile(file_path))
-            os.remove(file_path)
-        else:
-            await message.reply("Failed to download the video. Please check the URL and try again.")
+        file_path = await download_file(url, 'downloaded_video.mkv')
     else:
-        await message.reply("Unsupported file format. Please provide a link to a video in MKV or MP4 format.")
+        file_path = await download_video(url)
+
+    if file_path:
+        await message.reply_document(InputFile(file_path))
+        os.remove(file_path)
+    else:
+        await message.reply("Failed to download the video. Please check the URL and try again.")
 
 
 if __name__ == '__main__':
