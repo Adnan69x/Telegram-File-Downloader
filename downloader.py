@@ -3,6 +3,7 @@ import os
 import config
 import aiohttp
 import youtube_dl
+from youtube_dl.utils import UnsupportedError
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
@@ -37,20 +38,27 @@ async def download_file(url: str, filename: str) -> str:
 
 
 async def download_video(url: str) -> str:
-    ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
-        'outtmpl': 'downloaded_video.mp4',
-    }
-    try:
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            video_url = info['formats'][0]['url']
-            filename = 'downloaded_video.mp4'
-            await download_file(video_url, filename)
-            return filename
-    except Exception as e:
-        logger.exception("Error occurred while downloading video:")
-        return None
+    if url.startswith('https://www.youtube.com/') or url.startswith('https://youtu.be/'):
+        try:
+            ydl_opts = {
+                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+                'outtmpl': 'downloaded_video.mp4',
+            }
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                video_url = info['formats'][0]['url']
+                filename = 'downloaded_video.mp4'
+                await download_file(video_url, filename)
+                return filename
+        except UnsupportedError as e:
+            logger.error(f"Unsupported URL: {url}")
+            return None
+        except Exception as e:
+            logger.exception("Error occurred while downloading video:")
+            return None
+    else:
+        filename = 'downloaded_video.mkv'
+        return await download_file(url, filename)
 
 
 @dp.message_handler(commands=['start'])
@@ -62,10 +70,7 @@ async def start(message: types.Message):
 async def process_video(message: types.Message):
     url = message.text.strip()
 
-    if url.endswith('.mkv') or url.endswith('.mp4'):
-        file_path = await download_file(url, 'downloaded_video.mkv')
-    else:
-        file_path = await download_video(url)
+    file_path = await download_video(url)
 
     if file_path:
         await message.reply_document(InputFile(file_path))
