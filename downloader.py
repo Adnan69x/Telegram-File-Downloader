@@ -21,7 +21,7 @@ async def download_video(url: str) -> str:
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-    except ExtractorError:
+    except youtube_dl.DownloadError:
         return None
     return 'downloaded_video.mp4'
 
