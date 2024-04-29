@@ -7,6 +7,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.types import InputFile
 import aiohttp
 import youtube_dl
+from youtube_dl.utils import ExtractorError
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot)
@@ -17,8 +18,11 @@ async def download_video(url: str) -> str:
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
         'outtmpl': 'downloaded_video.mp4'
     }
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+    try:
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    except ExtractorError:
+        return None
     return 'downloaded_video.mp4'
 
 
@@ -36,7 +40,7 @@ async def process_video(message: types.Message):
             await message.reply_document(InputFile(file_path))
             os.remove(file_path)
         else:
-            await message.reply("Failed to download the video.")
+            await message.reply("Failed to download the video. The requested format may not be available.")
     else:
         await message.reply("Unsupported file format. Please provide a link to a video in MKV or MP4 format.")
 
