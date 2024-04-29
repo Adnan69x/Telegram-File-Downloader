@@ -2,7 +2,7 @@ import logging
 import os
 import config
 import aiohttp
-import re
+import youtube_dl
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
@@ -37,17 +37,20 @@ async def download_file(url: str, filename: str) -> str:
 
 
 async def download_video(url: str) -> str:
-    if "youtube.com" in url or "youtu.be" in url:
-        # Handle YouTube video download
-        return await download_youtube_video(url)
-    else:
-        # Handle direct file download link
-        return await download_file(url, 'downloaded_video.mkv')
-
-
-async def download_youtube_video(url: str) -> str:
-    # Add code to download YouTube videos here
-    return None
+    ydl_opts = {
+        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+        'outtmpl': 'downloaded_video.mp4',
+    }
+    try:
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            video_url = info['formats'][0]['url']
+            filename = 'downloaded_video.mp4'
+            await download_file(video_url, filename)
+            return filename
+    except Exception as e:
+        logger.exception("Error occurred while downloading video:")
+        return None
 
 
 @dp.message_handler(commands=['start'])
@@ -59,7 +62,6 @@ async def start(message: types.Message):
 async def process_video(message: types.Message):
     url = message.text.strip()
 
-    # Check if the provided link is a direct file download link
     if url.endswith('.mkv') or url.endswith('.mp4'):
         file_path = await download_file(url, 'downloaded_video.mkv')
     else:
