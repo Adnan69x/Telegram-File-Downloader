@@ -1,7 +1,7 @@
 import logging
 import os
 import config
-import requests
+import aiohttp
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
@@ -17,12 +17,20 @@ dp = Dispatcher(bot)
 
 async def download_video(url: str) -> str:
     try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors (e.g., 404)
-        filename = 'downloaded_video.mp4'
-        with open(filename, 'wb') as f:
-            f.write(response.content)
-        return filename
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    filename = 'downloaded_video.mkv'  # Adjust the filename as needed
+                    with open(filename, 'wb') as f:
+                        while True:
+                            chunk = await response.content.read(1024)
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                    return filename
+                else:
+                    logger.error(f"Failed to download video. Status code: {response.status}")
+                    return None
     except Exception as e:
         logger.exception("Error occurred while downloading video:")
         return None
