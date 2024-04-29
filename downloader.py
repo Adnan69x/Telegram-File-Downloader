@@ -1,4 +1,4 @@
-import asyncio
+import logging
 import os
 import config
 import requests
@@ -6,23 +6,25 @@ import requests
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.types import InputFile
-import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 bot = Bot(token=config.TOKEN)
 dp = Dispatcher(bot)
 
 
 async def download_video(url: str) -> str:
-    logging.info(f"Downloading video from: {url}")
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors (e.g., 404)
         filename = 'downloaded_video.mp4'
         with open(filename, 'wb') as f:
             f.write(response.content)
-        logging.info("Video downloaded successfully.")
         return filename
-    else:
-        logging.error(f"Failed to download video. Status code: {response.status_code}")
+    except Exception as e:
+        logger.exception("Error occurred while downloading video:")
         return None
 
 
@@ -46,7 +48,11 @@ async def process_video(message: types.Message):
 
 
 if __name__ == '__main__':
-    logging.info("Starting bot...")
-    loop = asyncio.get_event_loop()
-    loop.create_task(dp.start_polling())
-    loop.run_forever()
+    logger.info("Starting bot...")
+    try:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        loop.create_task(dp.start_polling())
+        loop.run_forever()
+    except Exception as e:
+        logger.exception("An error occurred in the main loop:")
